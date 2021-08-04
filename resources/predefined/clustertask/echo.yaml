@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: echo
+spec:
+  description: This Task can be used to run a Maven build.
+  params:
+  - name: MESSAGE
+    description: Message to be echoed
+    type: string
+    default: Meawwwwwww 😺
+  steps:
+  - image: registry.access.redhat.com/ubi8/ubi-minimal:8.4
+    name: echo
+    script: |
+      echo $(params.MESSAGE)
