@@ -123,7 +123,13 @@ Feel free to play around with these colors if you feel like it. The environment 
 $ oc edit deployment color-service
 ```
 
-## Getting Started with Tekton
+## Playing around with Tasks
+
+First of all, let's create a new project so that we keep everything tidy:
+
+```
+$ oc new-project $(oc whoami)-tekton-playground
+```
 
 Remember that the foundation of Tekton consists of two Resource types. Tasks, and Pipelines which form a collection of Tasks. Tasks and Pipelines can be started by creating TaskRun and PipelineRun resources. Since we just created the namespace, the only thing we can start at this point are cluster tasks, which we can explore as follows:
 
@@ -144,7 +150,7 @@ ClusterTasks are not namespaced, and available to use in the whole cluster. If y
 Let's have a closer look ath the echo task:
 
 ```
-$ $ tkn clustertask describe echo
+$ tkn clustertask describe echo
 Name:          echo
 Description:   This Task can be used to run a Maven build.
 
@@ -216,7 +222,6 @@ We can even dig deeper into these runs:
 ```
 $ tkn taskrun describe echo-run-tqb2h
 Name:              echo-run-tqb2h
-Namespace:         jritter-web-terminal
 Task Ref:          echo
 Service Account:   pipeline
 Timeout:           1h0m0s
@@ -263,3 +268,72 @@ No sidecars
 Tasks, ClusterTasks and TaskRuns can also be observed in the OpenShift Web Console. Can you figure out where and how?
 
 
+## The first pipeline!
+
+Now let's see if we can weave the echo Task that we have used before into a very simple pipeline, just to get the hang of it. This will be the first tekton object that we will deploy into our namespace.
+
+Have a look at the following Pipeline definition, and make sure you understand how the connection works. Note that the `spec.tasks` definition is a list, and can contain multiple tasks as we will see in the future.
+
+[first-pipeline.yaml](resources/solution/pipeline/first-pipeline.yaml)
+
+```
+$ oc create -f resources/solution/pipeline/first-pipeline.yaml
+```
+
+```
+$ tkn pipeline describe first-pipeline
+Name:          first-pipeline
+Description:   This Pipeline Builds and deploys the color service
+
+📦 Resources
+
+ No resources
+
+⚓ Params
+
+ NAME        TYPE     DESCRIPTION              DEFAULT VALUE
+ ∙ MESSAGE   string   The Message which s...   Hello Pipeline
+
+📝 Results
+
+ No results
+
+📂 Workspaces
+
+ No workspaces
+
+🗒  Tasks
+
+ NAME     TASKREF   RUNAFTER   TIMEOUT   CONDITIONS   PARAMS
+ ∙ echo   echo                 ---       ---          MESSAGE: Hello Pipeline
+
+⛩  PipelineRuns
+
+ NAME                         STARTED          DURATION    STATUS
+ ∙ first-pipeline-fq6szq      5 minutes ago    8 seconds   Succeeded
+ ∙ first-pipeline-run-zhlp6   26 minutes ago   7 seconds   Succeeded
+ ∙ first-pipeline-run-bd9q5   26 minutes ago   8 seconds   Succeeded
+```
+
+Note that the pipeline takes one parameter called MESSAGE, similar to the ClusterTask that we have been playing around before.
+
+We can run the pipeline like this:
+
+```
+$ tkn pipeline start first-pipeline -p "MESSAGE=Hello Tekton!" 
+PipelineRun started: first-pipeline-run-rd6vq
+
+In order to track the PipelineRun progress run:
+tkn pipelinerun logs first-pipeline-run-rd6vq -f 
+```
+Check out the logs of the pipeline using the command that is presented by you in the output of the previous command.
+
+You can also list the pipelineruns like so:
+
+```
+$ tkn pipelinerun list
+NAME                       STARTED          DURATION    STATUS
+first-pipeline-run-rd6vq   3 minutes ago    8 seconds   Succeeded
+```
+
+Again, head over to the OpenShift Web Console, and explore the pipelines, the pipeline runs, the logs, and try to run the pipeline from the web console.

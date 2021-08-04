@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: first-pipeline
+spec:
+  description: This Pipeline Builds and deploys the color service
+  params:
+  - name: MESSAGE
+    default: Hello Pipeline!
+    description: The Message which should be echoed
+    type: string
+  tasks:
+  - name: echo
+    params:
+    - name: MESSAGE
+      value: $(params.MESSAGE)
+    taskRef:
+      kind: ClusterTask
+      name: echo
