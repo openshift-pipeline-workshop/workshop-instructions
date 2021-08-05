@@ -6,9 +6,14 @@ Welcome to the OpenShift Pipelines Workshop! Here you'll find all the necessary 
 
 This repository contains instructions which are part of a taught workshop on [Tekton](https://tekton.dev) and [OpenShift Pipelines](https://cloud.redhat.com/learn/topics/ci-cd). It is based on OpenShift 4.8 and OpenShift Pipelines 1.5. 
 
+## How you should approach it
+
+After getting up to speed with the exercise environment and Tekton itself, you'll be challenged by implementing tasks, modifying pipeline, and figuring stuff out. Possible solutions are available in the [solution](resources/solution) directory of this repository. You are encouraged tough to find solutions on your own, by looking at examples, reading the documentation, or talking to your peers or instructor. Look at the solution if you are really stuck, or to compare it with your own solution (which is probably a good one too!). If things are unclear, the instructor will be happy to help out. Getting the hands dirty and try things out is one of the most effective ways to learn new things.
+
 ## What you need before getting started
 
 - A notebook with a browser
+- Some basic understanding of container technology, Git and Kubernetes
 - OpenShift 4.8 Cluster with OpenShift Pipelines Operator installed. This will be provided for the students in the lecture.
 - [GitHub](https://github.com/) Account
 - For students: Please ask your teacher to add your account to the [openshift-pipeline-workshop](https://github.com/openshift-pipeline-workshop) organisation. This allows you to log into the OpenShift Cluster using the GitHub account.
@@ -274,10 +279,10 @@ Now let's see if we can weave the echo Task that we have used before into a very
 
 Have a look at the following Pipeline definition, and make sure you understand how the connection works. Note that the `spec.tasks` definition is a list, and can contain multiple tasks as we will see in the future.
 
-[first-pipeline.yaml](resources/solution/pipeline/first-pipeline.yaml)
+[first-pipeline.yaml](resources/exercise/pipeline/first-pipeline.yaml)
 
 ```
-$ oc create -f resources/solution/pipeline/first-pipeline.yaml
+$ oc create -f resources/exercise/pipeline/first-pipeline.yaml
 ```
 
 ```
@@ -337,3 +342,130 @@ first-pipeline-run-rd6vq   3 minutes ago    8 seconds   Succeeded
 ```
 
 Again, head over to the OpenShift Web Console, and explore the pipelines, the pipeline runs, the logs, and try to run the pipeline from the web console.
+
+
+### References
+- https://tekton.dev/docs/pipelines/tasks/
+- https://tekton.dev/docs/pipelines/pipelines/
+- https://docs.openshift.com/container-platform/4.8/cicd/pipelines/creating-applications-with-cicd-pipelines.html#triggering-a-pipeline_creating-applications-with-cicd-pipelines
+
+
+## Sharing Data in a Pipeline
+
+A pipeline typically consists of multiple tasks, which are executed in sequence or in parallel. A CI/CD pipeline for a Java application could look as follows:
+1. Git Clone
+2. Maven Test
+3. Maven Package
+4. Build and Push Container Image
+5. Deploy
+6. Smoke Test Deployment
+
+It is quite obvious that step 3 cannot run without the output of step 1, and step 4 cannot run without the output of step 3. This is where the concept of workspaces comes into play, which is a way of passing data along the execution of a pipeline. Since each task runs in its own Kubernetes Pod, they don't know about each other from a storage perspective. Workspaces allow to map different storage concepts into a pipeline execution. These storage concepts include:
+
+- [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/) - Useful to pass in configuration files for the pipeline
+- [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/) - Useful to pass in secrets into a pipeline
+- [PersistentVolumeClaims](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims) - Useful for passing along a cloned git repository for example
+- [emtpyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) - Ephemeral scratch space and testing
+
+
+If we want to build a Java Application as outlined above, we need to clone the Git repository containing the source code of the application into a workspace mapped to a PersistentVolumeClaim.
+
+Look at the following pipeline and task:
+
+* [workspace-pipeline.yaml](resources/exercise/pipeline/workspace-pipeline.yaml)
+* [ls.yaml](resources/exercise/task/ls.yaml)
+
+Can you figure out how to wire up the `ls` task into the `workspace-pipeline` so that the logs of the `ls` task will show the content of the git repository cloned by the `git-clone` task?
+
+TIP: At some point you'll have to load your definitions into the OpenShift Cluster. One possible way to do so is probably to clone this git repository to your computer, modify the definitions in the [resources/excercise](resources/exercise) folder, and then apply the configuration, for instance:
+
+```
+$ oc apply -f resources/exercise/pipeline/workspace-pipeline.yaml
+```
+
+This command can also be used to modify the definition in the cluster after you have changed the definition locally on your computer.
+
+Feel free to use any method to manage your definitions, including but not limited to the OpenShift Web Console, `kubectl edit`, `oc edit`, VSCode Kubernetes Plugin, etc.
+
+Before you run your pipeline, you'll have to create a persistent volume claim, which will be mapped to the source workspace of the pipeline. A sample definition can be found in the resources directory:
+
+```
+$ oc apply -f resources/exercise/pvc/source-workspace.yaml
+```
+
+After that, you can launch the pipeline like so:
+
+```
+$ tkn pipeline start workspace-pipeline --use-param-defaults -w name=source,claimName=source-workspace
+```
+
+Note that by using this command, we map the persistent volume claim we just created to the source workspace in the pipeline. The `git-clone` task will persist the cloned git repository into the persistent volume, which will be passed on to the `ls` task.
+
+This method works fine, but it would be nice if we didn't have to reuse the persistent volume claim for each pipeline run, as it could cause conflicts with other pipeline runs that might run in parallel.
+
+There is another method, which makes use of a so called volume claim template, from which a persistent volume claim is generated for each pipeline run.
+
+Look at the following definition:
+[resources/exercise/pipelinerun/workspace-pipeline.yaml](resources/exercise/pipelinerun/workspace-pipeline.yaml)
+
+This definition generates a PVC for each pipeline run.
+
+Try to launch the pipeline by applying the PipelineRun object:
+
+```
+$ oc create -f resources/exercise/pipelinerun/workspace-pipeline.yaml
+```
+
+Now have a look at the persistent volume claims in your namespace:
+
+```
+$ oc get pvc
+NAME               STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+pvc-2255bcf699     Bound    pvc-bce66395-32d1-4ce8-ac68-2760182a026d   1Gi        RWO            gp2            14m
+pvc-519112a606     Bound    pvc-3d2d1af0-87fd-4c2f-a3a3-51d1353e77bd   1Gi        RWO            gp2            9m13s
+source-workspace   Bound    pvc-504f7cf8-9671-46ed-be73-c222fc73e0a0   1Gi        RWO            gp2            33m
+```
+
+Note that next to the source-workspace claim that we created before, you'll see a new claim created for each pipeline run object. These pvcs share the lifecycle with the corresponding PipelineRun resource. So if you delete the PipelineRun resource, the persistent volume and the claim will also be deleted. Give it a try!
+
+Also, head over to the OpenShift Web console, and try to trigger pipeline runs with an existing persistent volume and a volume claim template.
+
+### Refernces
+- https://tekton.dev/docs/pipelines/workspaces/
+- 
+
+
+## Working with Results
+
+In some cases, saving the output of a task to a persistent volume to pass it along to another task is simply overkill, for instance if a task yields a simple string, which should be used as an input for the subsequent task. That's where the concept of results come into play. The `git-clone` task for instance yields two results, called "commit" and "url". This can be found out by having a look at the task description:
+
+```
+$ tkn clustertask describe git-clone
+Name:          git-clone
+Description:   These Tasks are Git tasks to work with repositories used by other tasks in your Pipeline.
+The git-clone Task will clone a repo from the provided url into the output Workspace. By default the repo will be cloned into the root of your Workspace. You can clone into a subdirectory by setting this Task's subdirectory param. This Task also supports sparse checkouts. To perform a sparse checkout, pass a list of comma separated directory patterns to this Task's sparseCheckoutDirectories param.
+
+...
+
+📝 Results
+
+ NAME       DESCRIPTION
+ ∙ commit   The precise commit ...
+ ∙ url      The precise URL tha...
+
+...
+```
+
+You can use these results in the pipeline definition by accessing the this variable:
+
+```
+tasks.<taskName>.results.<resultName>
+```
+
+### References
+- https://tekton.dev/docs/pipelines/variables/
+
+
+## Install The Pipeline for the Color Service
+
+Now let's move on to the real deal, install a build pipeline for the color-service with all the builds and whistles. On top of that, we will configure GitHub such that it is able to trigger a pipeline run whenever a push happens.

@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  # Generate a name for the object
+  generateName: workspace-pipeline-run-
+spec:
+  # We want to pass the following parameters into the pipeline
+  params:
+  - name: GIT_REPO
+    value: https://github.com/openshift-pipeline-workshop/color-service.git
+  - name: GIT_REVISION
+    value: master
+  pipelineRef:
+    name: workspace-pipeline
+  serviceAccountName: pipeline
+  timeout: 1h0m0s
+  workspaces:
+  - name: source
+    # This is the interesting bit, which creates a new
+    # 1Gi persistent volume claim for each pipeline run
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        volumeMode: Filesystem

@@ -1,0 +1,13 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ls
+spec:
+  description: This task lists the content of the content workspace
+  workspaces:
+    - name: content
+  steps:
+  - image: registry.access.redhat.com/ubi8/ubi-minimal:8.4
+    name: ls
+    script: |
+      ls $(workspaces.content.path)

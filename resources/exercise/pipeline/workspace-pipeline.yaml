@@ -1,0 +1,52 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: workspace-pipeline
+spec:
+  description: This pipeline demonstrates the use of workspaces
+  params:
+  - name: GIT_REPO
+    description: The Git Repository which should be cloned into the workspace
+    type: string
+    default: https://github.com/openshift-pipeline-workshop/color-service.git
+  - name: GIT_REVISION
+    description: The revision which should be cloned
+    type: string
+    default: master
+  # we need to declare all workspaces used by the pipeline
+  workspaces:
+  - name: source
+  tasks:
+    # We are using a predefined cluster task which allows to clone a git repo
+    # Run the following command to inspect the cluster task:
+    #   tkn clustertask describe git-clone
+  - name: git-clone
+    taskRef:
+      name: git-clone
+      kind: ClusterTask
+    params:
+        # "url" is the name of the parameter as specified by the git-clone task
+      - name: url
+        value: $(params.GIT_REPO)
+        # "revision" is the name of the parameter as specified by the git-clone task
+      - name: revision
+        value: $(params.GIT_REVISION)
+    # here we map the workspace output (defined by the task) to the source
+    # workspace defined by the pipeline
+    workspaces:
+      - name: output
+        workspace: source
+    # Now let's display the content of the source workspace.
+    # For that, we are using the tree task
+
+    # YOUR TASK (Workspace chapter): Wire up the 'ls' task, so that the log
+    # outputs the content of the git repository which has been cloned
+    # in the 'git-clone' step.
+    # 
+    # Make sure that you pass in the workspace, and that the task runs
+    # after the git clone task.
+
+    # YOUR TASK (Results chapter): Try to extend the pipeline with one or
+    # multiple tasks which display the url and commit results of the
+    # git-clone task. Update the existing pipeline in your cluster namespace,
+    # and run the pipeline.
