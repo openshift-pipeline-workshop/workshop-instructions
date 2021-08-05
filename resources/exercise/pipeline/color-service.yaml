@@ -1,0 +1,119 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: color-service
+spec:
+  description: >-
+    This Pipeline Builds and deploys the color service
+  params:
+    - name: context-dir
+      description: >-
+        The application framework to use, value can be either quarkus or springboot
+      default: .
+    - name: service-name
+      description: The name of the service
+      default: color-service
+    - name: git-repo-url
+      description: The git Repo of the Java Application
+      default: https://github.com/openshift-pipeline-workshop/color-service.git
+    - name: git-repo-revision
+      description: The git revision to use
+      default: develop
+    - name: git-repo-ref
+      description: The git ref to use
+      default: refs/heads/develop
+  workspaces:
+    - name: source
+    - name: maven-repo
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      params:
+        - name: url
+          value: $(params.git-repo-url)
+        - name: revision
+          value: $(params.git-repo-revision)
+        # just to do a fresh clone, as we already have the directory cloned
+        # to reuse it we can exlude this step
+        - name: deleteExisting
+          value: 'true'
+      workspaces:
+        - name: output
+          workspace: source
+    - name: maven-test
+      taskRef:
+        name: maven
+      runAfter:
+        - git-clone
+      params:
+        - name: GOALS
+          value: ['-pl', '$(params.context-dir)', '-B', 'clean', 'test']
+      workspaces:
+        - name: maven-repo
+          workspace: maven-repo
+        - name: source
+          workspace: source
+    - name: maven-package
+      taskRef:
+        name: maven
+      runAfter:
+        - maven-test
+      params:
+        - name: GOALS
+          value:
+            [
+              '-pl',
+              '$(params.context-dir)',
+              '-B',
+              '-DskipTests',
+              'clean',
+              'package',
+            ]
+      workspaces:
+        - name: maven-repo
+          workspace: maven-repo
+        - name: source
+          workspace: source
+    - name: build-container-image
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - maven-package
+      params:
+        - name: CONTEXT
+          value: $(params.context-dir)
+        - name: IMAGE
+          value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.service-name):$(tasks.git-clone.results.commit)"
+        # since pushing to internal registry we skip TLS verify
+        - name: TLSVERIFY
+          value: 'false'
+        - name: DOCKERFILE
+          value: ./src/main/docker/Dockerfile.jvm
+      workspaces:
+        - name: source
+          workspace: source
+    - name: deploy-application
+      taskRef:
+        name: helm-deploy
+      runAfter:
+        - build-container-image
+      params:
+        - name: CHART_NAME
+          value: $(params.service-name)
+        - name: RELEASE_NAMESPACE
+          value: $(context.pipelineRun.namespace)
+        - name: APP_VERSION
+          value: $(tasks.maven-package.results.version)
+        - name: SERVICE_NAME
+          value: $(params.service-name)
+        - name: GIT_REF
+          value: $(params.git-repo-ref)
+        # since pushing to internal registry we skip TLS verify
+        - name: OVERWRITE_VALUES
+          value: image.repository=image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.service-name),image.tag=$(tasks.git-clone.results.commit),vcsRef=$(params.git-repo-ref),vcsCommit=$(tasks.git-clone.results.commit),vcsUri=$(params.git-repo-url)
+      workspaces:
+        - name: source
+          workspace: source

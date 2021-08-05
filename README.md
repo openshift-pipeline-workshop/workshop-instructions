@@ -430,10 +430,9 @@ Note that next to the source-workspace claim that we created before, you'll see 
 
 Also, head over to the OpenShift Web console, and try to trigger pipeline runs with an existing persistent volume and a volume claim template.
 
-### Refernces
-- https://tekton.dev/docs/pipelines/workspaces/
-- 
+### References
 
+- https://tekton.dev/docs/pipelines/workspaces/
 
 ## Working with Results
 
@@ -469,3 +468,19 @@ tasks.<taskName>.results.<resultName>
 ## Install The Pipeline for the Color Service
 
 Now let's move on to the real deal, install a build pipeline for the color-service with all the builds and whistles. On top of that, we will configure GitHub such that it is able to trigger a pipeline run whenever a push happens.
+
+In order to keep everything tidy, let's create a new project for the color service:
+
+```
+$ oc new-project $(oc whoami)-color-service
+```
+
+```
+$ oc apply -f resources/exercise/task/helm-deploy.yaml
+$ oc apply -f resources/exercise/task/maven.yaml
+$ oc apply -f resources/exercise/pipeline/color-service.yaml
+$ oc apply -f resources/exercise/eventlistener/color-service.yaml
+$ oc apply -f resources/exercise/triggertemplate/color-service.yaml
+$ oc apply -f resources/exercise/triggerbinding/color-service.yaml
+$ oc apply -f 
+```

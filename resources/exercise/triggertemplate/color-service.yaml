@@ -1,0 +1,48 @@
+apiVersion: triggers.tekton.dev/v1alpha1 
+kind: TriggerTemplate 
+metadata:
+  name: color-service
+spec:
+  params: 
+  - name: git-repo-url
+    description: The git repository url
+  - name: git-repo-revision
+    description: The git revision
+    default: develop
+  - name: git-repo-ref
+    description: The git ref
+    default: refs/heads/develop
+  - name: git-repo-name
+    description: The name of the deployment to be created / patched
+  resourcetemplates: 
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: color-service-
+    spec:
+      pipelineRef:
+        name: color-service
+      params:
+      - name: service-name
+        value: $(tt.params.git-repo-name)
+      - name: git-repo-url
+        value: $(tt.params.git-repo-url)
+      - name: git-repo-revision
+        value: $(tt.params.git-repo-revision)
+      - name: git-repo-ref
+        value: $(tt.params.git-repo-ref)
+      serviceAccountName: pipeline
+      timeout: 1h0m0s
+      workspaces:
+      - name: source
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+            volumeMode: Filesystem
+      - name: maven-repo
+        persistentVolumeClaim:
+          claimName: maven-repo
