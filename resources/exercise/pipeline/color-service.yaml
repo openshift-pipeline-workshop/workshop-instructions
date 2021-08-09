@@ -10,16 +10,19 @@ spec:
       description: >-
         The application framework to use, value can be either quarkus or springboot
       default: .
-    - name: service-name
+    - name: SERVICE_NAME
       description: The name of the service
       default: color-service
-    - name: git-repo-url
+    - name: GIT_REPO_URL
       description: The git Repo of the Java Application
       default: https://github.com/openshift-pipeline-workshop/color-service.git
-    - name: git-repo-revision
+    - name: GIT_REPO_FULL_NAME
+      description: Full name of the repository
+      default: openshift-pipeline-workshop/color-service
+    - name: GIT_REVISION
       description: The git revision to use
       default: develop
-    - name: git-repo-ref
+    - name: GIT_REF
       description: The git ref to use
       default: refs/heads/develop
   workspaces:
@@ -32,9 +35,9 @@ spec:
         kind: ClusterTask
       params:
         - name: url
-          value: $(params.git-repo-url)
+          value: $(params.GIT_REPO_URL)
         - name: revision
-          value: $(params.git-repo-revision)
+          value: $(params.GIT_REVISION)
         # just to do a fresh clone, as we already have the directory cloned
         # to reuse it we can exlude this step
         - name: deleteExisting
@@ -42,6 +45,22 @@ spec:
       workspaces:
         - name: output
           workspace: source
+    - name: github-build-status-pending
+      taskRef:
+        name: github-set-status
+      runAfter:
+        - git-clone
+      params:
+        - name: REPO_FULL_NAME
+          value: $(params.GIT_REPO_FULL_NAME)
+        - name: SHA
+          value: $(tasks.git-clone.results.commit)
+        - name: DESCRIPTION
+          value: "Build has started"
+        - name: STATE
+          value: pending
+        - name: TARGET_URL
+          value: https://tekton/dashboard/taskrun/log
     - name: maven-test
       taskRef:
         name: maven
@@ -86,7 +105,7 @@ spec:
         - name: CONTEXT
           value: $(params.context-dir)
         - name: IMAGE
-          value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.service-name):$(tasks.git-clone.results.commit)"
+          value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.SERVICE_NAME):$(tasks.git-clone.results.commit)"
         # since pushing to internal registry we skip TLS verify
         - name: TLSVERIFY
           value: 'false'
@@ -102,18 +121,55 @@ spec:
         - build-container-image
       params:
         - name: CHART_NAME
-          value: $(params.service-name)
+          value: $(params.SERVICE_NAME)
         - name: RELEASE_NAMESPACE
           value: $(context.pipelineRun.namespace)
         - name: APP_VERSION
           value: $(tasks.maven-package.results.version)
         - name: SERVICE_NAME
-          value: $(params.service-name)
+          value: $(params.SERVICE_NAME)
         - name: GIT_REF
-          value: $(params.git-repo-ref)
-        # since pushing to internal registry we skip TLS verify
+          value: $(params.GIT_REF)
         - name: OVERWRITE_VALUES
-          value: image.repository=image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.service-name),image.tag=$(tasks.git-clone.results.commit),vcsRef=$(params.git-repo-ref),vcsCommit=$(tasks.git-clone.results.commit),vcsUri=$(params.git-repo-url)
+          value: image.repository=image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.SERVICE_NAME),image.tag=$(tasks.git-clone.results.commit),vcsRef=$(params.GIT_REVISION),vcsCommit=$(tasks.git-clone.results.commit),vcsUri=$(params.GIT_REPO_URL)
       workspaces:
         - name: source
           workspace: source
+  finally:
+    - name: github-build-status-success
+      taskRef:
+        name: github-set-status
+      params:
+        - name: REPO_FULL_NAME
+          value: $(params.GIT_REPO_FULL_NAME)
+        - name: SHA
+          value: $(tasks.git-clone.results.commit)
+        - name: DESCRIPTION
+          value: "Build has completed successfully"
+        - name: STATE
+          value: success
+        - name: TARGET_URL
+          value: https://tekton/dashboard/taskrun/log
+      when:
+        - input: $(tasks.status)
+          operator: in
+          values: ["Succeeded", "Completed"]
+    - name: github-build-status-failed
+      taskRef:
+        name: github-set-status
+      params:
+        - name: REPO_FULL_NAME
+          value: $(params.GIT_REPO_FULL_NAME)
+        - name: SHA
+          value: $(tasks.git-clone.results.commit)
+        - name: DESCRIPTION
+          value: "Build has failed"
+        - name: STATE
+          value: failure
+        - name: TARGET_URL
+          value: https://tekton/dashboard/taskrun/log
+      when:
+        - input: $(tasks.status)
+          operator: in
+          values: ["Failed"]
+      

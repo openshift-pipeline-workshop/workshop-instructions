@@ -1,0 +1,26 @@
+apiVersion: triggers.tekton.dev/v1alpha1 
+kind: TriggerTemplate 
+metadata:
+  name: color-service-delete-deployment
+spec:
+  params: 
+  - name: GIT_REF
+    description: The git ref
+    default: refs/heads/develop
+  - name: GIT_REPO_NAME
+    description: The name of the deployment to be created / patched
+  resourcetemplates: 
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: color-service-delete-deployment-
+    spec:
+      pipelineRef:
+        name: color-service-delete-deployment
+      params:
+      - name: SERVICE_NAME
+        value: $(tt.params.GIT_REPO_NAME)
+      - name: GIT_REF
+        value: $(tt.params.GIT_REF)
+      serviceAccountName: pipeline
+      timeout: 1h0m0s

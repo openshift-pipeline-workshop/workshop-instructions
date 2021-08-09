@@ -4,16 +4,18 @@ metadata:
   name: color-service
 spec:
   params: 
-  - name: git-repo-url
+  - name: GIT_REPO_URL
     description: The git repository url
-  - name: git-repo-revision
+  - name: GIT_REVISION
     description: The git revision
     default: develop
-  - name: git-repo-ref
+  - name: GIT_REF
     description: The git ref
     default: refs/heads/develop
-  - name: git-repo-name
+  - name: GIT_REPO_NAME
     description: The name of the deployment to be created / patched
+  - name: GIT_REPO_FULL_NAME
+    description: Full name of the repository
   resourcetemplates: 
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
@@ -23,14 +25,16 @@ spec:
       pipelineRef:
         name: color-service
       params:
-      - name: service-name
-        value: $(tt.params.git-repo-name)
-      - name: git-repo-url
-        value: $(tt.params.git-repo-url)
-      - name: git-repo-revision
-        value: $(tt.params.git-repo-revision)
-      - name: git-repo-ref
-        value: $(tt.params.git-repo-ref)
+      - name: SERVICE_NAME
+        value: $(tt.params.GIT_REPO_NAME)
+      - name: GIT_REPO_FULL_NAME
+        value: $(tt.params.GIT_REPO_FULL_NAME)
+      - name: GIT_REPO_URL
+        value: $(tt.params.GIT_REPO_URL)
+      - name: GIT_REVISION
+        value: $(tt.params.GIT_REVISION)
+      - name: GIT_REF
+        value: $(tt.params.GIT_REF)
       serviceAccountName: pipeline
       timeout: 1h0m0s
       workspaces:

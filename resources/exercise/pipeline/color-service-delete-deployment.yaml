@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: color-service-delete-deployment
+spec:
+  description: >-
+    This Pipeline cleans up deployments for branches which have been deleted
+  params:
+    - name: SERVICE_NAME
+      description: The name of the service
+      default: color-service
+    - name: GIT_REF
+      description: The git ref to use
+      default: refs/heads/develop
+  tasks:
+    - name: uninstall-application
+      taskRef:
+        name: helm-uninstall
+      params:
+        - name: RELEASE_NAMESPACE
+          value: $(context.pipelineRun.namespace)
+        - name: SERVICE_NAME
+          value: $(params.SERVICE_NAME)
+        - name: GIT_REF
+          value: $(params.GIT_REF)

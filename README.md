@@ -484,3 +484,12 @@ $ oc apply -f resources/exercise/triggertemplate/color-service.yaml
 $ oc apply -f resources/exercise/triggerbinding/color-service.yaml
 $ oc apply -f 
 ```
+
+
+
+
+### Create Token for GitHub Status
+
+```
+oc create secret generic github --from-literal token="XXXXXXXX"
+```

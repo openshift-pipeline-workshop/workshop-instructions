@@ -1,0 +1,12 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: color-service-delete
+spec:
+  params:
+  - name: GIT_REPO_NAME
+    value: $(body.repository.name)
+  - name: GIT_REPO_FULL_NAME
+    value: $(body.repository.full_name)
+  - name: GIT_REF
+    value: "refs/heads/$(body.ref)"
