@@ -131,7 +131,7 @@ spec:
         - name: GIT_REF
           value: $(params.GIT_REF)
         - name: OVERWRITE_VALUES
-          value: image.repository=image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.SERVICE_NAME),image.tag=$(tasks.git-clone.results.commit),vcsRef=$(params.GIT_REVISION),vcsCommit=$(tasks.git-clone.results.commit),vcsUri=$(params.GIT_REPO_URL)
+          value: image.repository=image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.SERVICE_NAME),image.tag=$(tasks.git-clone.results.commit),vcsRef=$(params.GIT_REF),vcsCommit=$(tasks.git-clone.results.commit),vcsUri=$(params.GIT_REPO_URL)
       workspaces:
         - name: source
           workspace: source
