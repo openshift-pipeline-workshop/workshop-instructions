@@ -43,6 +43,22 @@ spec:
       workspaces:
         - name: output
           workspace: source
+    - name: github-build-status-pending
+      taskRef:
+        name: github-set-status
+      runAfter:
+        - git-clone
+      params:
+        - name: REPO_FULL_NAME
+          value: $(params.GIT_REPO_FULL_NAME)
+        - name: SHA
+          value: $(tasks.git-clone.results.commit)
+        - name: DESCRIPTION
+          value: "Build has started"
+        - name: STATE
+          value: pending
+        - name: TARGET_URL
+          value: https://tekton/dashboard/taskrun/log
     - name: maven-test
       taskRef:
         name: maven
@@ -116,3 +132,36 @@ spec:
       workspaces:
         - name: source
           workspace: source
+  finally:
+    - name: github-build-status-success
+      taskRef:
+        name: github-set-status
+      params:
+        - name: REPO_FULL_NAME
+          value: $(params.GIT_REPO_FULL_NAME)
+        - name: SHA
+          value: $(tasks.git-clone.results.commit)
+        - name: DESCRIPTION
+          value: "Build has completed successfully"
+        - name: STATE
+          value: success
+      when:
+        - input: $(tasks.status)
+          operator: in
+          values: ["Succeeded", "Completed"]
+    - name: github-build-status-failed
+      taskRef:
+        name: github-set-status
+      params:
+        - name: REPO_FULL_NAME
+          value: $(params.GIT_REPO_FULL_NAME)
+        - name: SHA
+          value: $(tasks.git-clone.results.commit)
+        - name: DESCRIPTION
+          value: "Build has failed"
+        - name: STATE
+          value: failure
+      when:
+        - input: $(tasks.status)
+          operator: in
+          values: ["Failed"]

@@ -467,7 +467,22 @@ tasks.<taskName>.results.<resultName>
 
 ## Install The Pipeline for the Color Service
 
-Now let's move on to the real deal, install a build pipeline for the color-service with all the builds and whistles. On top of that, we will configure GitHub such that it is able to trigger a pipeline run whenever a push happens.
+Now let's move on to the real deal, install a build pipeline for the color-service with all the builds and whistles. On top of that, we will configure GitHub such that it is able to trigger a pipeline run whenever a push happens. 
+
+
+In the end, the pipeline should look something like this:
+![alt text](img/color_service_pipeline.png "Color Service Pipeline")
+
+The idea is that the pipeline executes the following tasks:
+- Clone The git repository containing the color service
+- Update the GitHub build status to pending on the commit
+- Run `mvn test` on the repository to run all the unit tests
+- Run `mvn package` on the repository create an executable jar file of the color-service application
+- Run `buildah` to create a container image and push it to the OpenShift image registry
+- Deploy the application using Helm
+- Depending on the outcome of the build, update the GitHub build status to success or failure
+
+### Deploy and test the pipeline and its dependencies
 
 In order to keep everything tidy, let's create a new project for the color service:
 
@@ -475,13 +490,83 @@ In order to keep everything tidy, let's create a new project for the color servi
 $ oc new-project $(oc whoami)-color-service
 ```
 
+First, we need to install the custom tasks we need for our pipeline, since not everything we need is available as a cluster wide ClusterTask. The tasks can be deployed as follows:
+
 ```
 $ oc apply -f resources/exercise/task/helm-deploy.yaml
 $ oc apply -f resources/exercise/task/maven.yaml
+```
+Next, let's deploy a basic version of the pipeline:
+
+```
 $ oc apply -f resources/exercise/pipeline/color-service.yaml
+```
+
+Look at the [definition of the pipeline](resources/exercise/pipeline/color-service.yaml), and make sure you understand how the plumbing between the tasks works.
+
+Before we run the pipeline for the first time, we need to make another preparation. When you look at the [maven task](resources/exercise/task/maven.yaml), you'll notice that it requires a workspace called 'maven-repo'. During each run, maven downloads all the dependencies specified in the pom.xml file of the project if they are not already available locally. This works well for instance on a workstation for local development. In a containerized environment where everything by default is stateless however, each run starts from scratch, meaning all the dependencies have to be downloaded entirely. The cost is bandwidth and time. The solution to this is persisting the maven cache on a persistent volume claim, which is passed into the pipeline as a workspace.
+
+The [definition of the persistent volume claim](resources/exercise/pvc/maven-repo.yaml) can be found in the resources directory of the repository.
+
+
+```
+$ oc apply -f resources/exercise/pvc/maven-repo.yaml
+```
+
+Now you can start the pipeline for the first time. The easiest way to do so is to start it from the OpenShift Web Console, by using the "Start" Action of the pipeline. You can use all the default parameters for your first build, just make sure that you wire up the workspaces correctly. The `source` workspace needs to be a PVC for each pipeline run, hence we need to use a `VolumeClaimTemplate`. For the `maven-repo` workspace we just created a PVC, hence selecte `PersistentVolumeClaim`, and then select the newly created `maven-repo` PVC. Now you are ready to launch the pipeline.
+
+![alt text](img/start_pipeline.png "Start Color Service Pipeline")
+
+Observe how the pipeline does it's job. Note that the `maven package` task should be much quicker than the `maven test` task, because the maven dependencies don't have to be downloaded anymore.
+
+After the pipeline finishes, a deployment should be available in your personal color-service namespace:
+
+![alt text](img/color_service_deployment.png "Color Service Deployment")
+
+You can also explore the deployment by running the following commands:
+
+```
+$ oc get deployment
+$ oc get pods
+$ oc get route
+```
+
+You should be able to access the web application through the route, make sure you use https.
+
+### Configure the Event Listener
+
+The goal is to trigger a pipeline run whenever a push to the GitHub repository occurs. GitHub allows user to configure Webhooks for different events happening on the repository. This feature is documented [here](https://docs.github.com/en/developers/webhooks-and-events/webhooks/about-webhooks).
+
+For these webhooks to work properly, we need to setup a receiving end on the OpenShift Cluster, which then runs our pipeline. To wire everything up correctly we need:
+
+- A TriggerTemplate object, which parametrizes the PipelineRun object which is created. For instance, it configures the workspaces which the pipeline needs.
+- A TriggerBinding object, which maps fields of the Webhook Call payload to the paramaeters of the TriggerTemplate. This allows to flexibily wire up Webhook calls from different callers (e.g. GitHub, BitBucket, GitLab, Gitea, etc.) to Tekton Pipelines without having to implement any logic.
+- A EventListener object, which exposes a webhook endpoint, and ties together the TriggerTemplate, the TriggerBinding, and optionally interceptors which allows for flexible filtering of calls.
+
+Look at this [example webhook request](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#push), and then look at the [trigger binding](resources/exercise/triggerbinding/color-service-push.yaml). Can you see how the fields are mapped?
+
+Now create the objects that we just discussed:
+
+```
+oc apply -f resources/exercise/triggertemplate/color-service.yaml
+oc apply -f resources/exercise/triggerbinding/color-service-push.yaml
+oc apply -f resources/exercise/eventlistener/color-service.yaml
+```
+
+The EventListener object deploys a Pod and a Service into your namespace. This acts as a endpoint for GitHub to call the webhook. For GitHub to be able to call the listener, the service needs to be exposed using a OpenShift route. A definition for this route can be found in this repository:
+
+```
+oc apply -f resources/exercise/route/el-color-service.yaml
+```
+
+### Fork the color-service into your own GitHub account
+
+In order to demonstrate no how we can hook up a Git development workflow with the pipeline we just built, you'll need a repo that you are in control of. To do so, head over to the [color-service](https://github.com/openshift-pipeline-workshop/color-service) repository on GitHub, and fork it into your own account. 
+
+```
 $ oc apply -f resources/exercise/eventlistener/color-service.yaml
 $ oc apply -f resources/exercise/triggertemplate/color-service.yaml
-$ oc apply -f resources/exercise/triggerbinding/color-service.yaml
+$ oc apply -f resources/exercise/triggerbinding/color-service-push.yaml
 $ oc apply -f 
 ```
 

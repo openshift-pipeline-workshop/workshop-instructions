@@ -18,3 +18,16 @@ spec:
     - ref: color-service-push
     template:
       ref: color-service
+  - name: color-service-delete-branch
+    interceptors:
+    - ref:
+        name: "github"
+        kind: ClusterInterceptor
+        apiVersion: triggers.tekton.dev
+      params:
+      - name: "eventTypes"
+        value: ["delete"]
+    bindings:
+    - ref: color-service-delete
+    template:
+      ref: color-service-delete-deployment
