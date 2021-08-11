@@ -628,9 +628,10 @@ In there, add a new webhook by clicking on "Add webhook", and configure it as fo
 
 ### Trigger a Pipeline Run
 
-Let's try out this whole chain now. The whole pipeline should now run whenever you push some code, so let's try this. In your cloned git repository, you can run the following git commands:
+Let's try out this whole chain now. The whole pipeline should now run whenever you push some code, so let's try this. In your cloned git repository, you can run the following git commands to create a new branch, add a commit to this branch, and push the branch to your Git repository:
 
 ```
+git branch -b feature/cool-feature
 git commit -m "empty-commit" --allow-empty
 git push -u origin
 ```
@@ -646,8 +647,23 @@ The OpenShift Web Console should reflect the same thing:
 ![alt text](img/running_pipeline.png "Running Pipeline")
 
 
+In the Topology view of the Developer perspective in the OpenShift Web Console, you should now see a new deployment being created after the pipeline completed.
 
+Now, try and merge back the commit into the develop branch:
 
+```
+git checkout develop
+git merge feature/cool-feature
+git push -u origin
+```
+
+This will trigger a new pipeline run, which will result in a separate helm release. For each branch, a separate helm release is created. Subsequent commits on a branch where the correponding release exists already will result in an update of the helm release.
+
+You can inspect the releases using the following command:
+
+```
+helm list
+```
 
 ### Create Token for GitHub Status
 
