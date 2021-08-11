@@ -42,7 +42,7 @@ Feel free to take the get started tour if you want!
 In case you want to use the command line client, you can obtain a token by clicking on your Name on the top right of the OpenShift Web Console, and then choose "Copy login command". In the window popping up, please choose again "github" if prompted, and then copy & paste the login command into the terminal application of your computer. The login command should look something like this, of course the token and the API URL will be different.
 
 ```
-$ oc login --token=sha256~XXXXX --server=https://api.cluster.openshift.com:6443
+oc login --token=sha256~XXXXX --server=https://api.cluster.openshift.com:6443
 ```
 
 
@@ -74,15 +74,15 @@ quay.io/jritter/color-service:2.0.0
 Let's deploy the application on the openshift cluster:
 
 ```
-$ oc new-project $(oc whoami)-color-service-explore
-$ oc new-app --docker-image=quay.io/jritter/color-service:2.0.0 COLOR_SERVICE_COLOR=blue
-$ oc expose service/color-service
+oc new-project $(oc whoami)-color-service-explore
+oc new-app --docker-image=quay.io/jritter/color-service:2.0.0 COLOR_SERVICE_COLOR=blue
+oc expose service/color-service
 ```
 
 Just like that, you deployed the application and it should now be accessible. In order to find out the URL, please run the following command:
 
 ```
-$ echo http://$(oc get route color-service -o jsonpath={'.spec.host'})
+echo http://$(oc get route color-service -o jsonpath={'.spec.host'})
 ```
 
 When accessing the URL in the browser, you should see something like this:
@@ -93,7 +93,10 @@ When accessing the URL in the browser, you should see something like this:
 Also, you should now see one pod running:
 
 ```
-$ oc get pods
+oc get pods
+```
+
+```
 NAME                             READY   STATUS    RESTARTS   AGE
 color-service-7849f456b5-nj6b2   1/1     Running   0          4m12s
 ```
@@ -101,13 +104,16 @@ color-service-7849f456b5-nj6b2   1/1     Running   0          4m12s
 The color that is returned by the color service can be changed by modifying the `COLOR_SERVICE_COLOR` environment variable, which we specified to be blue when deploying the application. If we want to change the color to green, we can modify the deployment as follows:
 
 ```
-$ oc set env deployment color-service COLOR_SERVICE_COLOR=green
+oc set env deployment color-service COLOR_SERVICE_COLOR=green
 ```
 
 After updating the deployment, you should see a new pod spinning up, and the old one disappearing:
 
 ```
-$ oc get pods
+oc get pods
+```
+
+```
 NAME                             READY   STATUS        RESTARTS   AGE
 color-service-5488c9ccc4-6w848   1/1     Running       0          4s
 color-service-7849f456b5-nj6b2   1/1     Terminating   0          7m36s
@@ -125,7 +131,7 @@ The color-service can serve the following colors:
 Feel free to play around with these colors if you feel like it. The environment variable can also be set by directly modifying the deployment resource:
 
 ```
-$ oc edit deployment color-service
+oc edit deployment color-service
 ```
 
 ## Playing around with Tasks
@@ -133,13 +139,16 @@ $ oc edit deployment color-service
 First of all, let's create a new project so that we keep everything tidy:
 
 ```
-$ oc new-project $(oc whoami)-tekton-playground
+oc new-project $(oc whoami)-tekton-playground
 ```
 
 Remember that the foundation of Tekton consists of two Resource types. Tasks, and Pipelines which form a collection of Tasks. Tasks and Pipelines can be started by creating TaskRun and PipelineRun resources. Since we just created the namespace, the only thing we can start at this point are cluster tasks, which we can explore as follows:
 
 ```
-$ tkn clustertask list
+tkn clustertask list
+```
+
+```
 NAME                       DESCRIPTION              AGE
 buildah                    Buildah task builds...   2 days ago
 buildah-1-5-0              Buildah task builds...   2 days ago
@@ -155,7 +164,10 @@ ClusterTasks are not namespaced, and available to use in the whole cluster. If y
 Let's have a closer look ath the echo task:
 
 ```
-$ tkn clustertask describe echo
+tkn clustertask describe echo
+```
+
+```
 Name:          echo
 Description:   This Task can be used to run a Maven build.
 
@@ -192,7 +204,10 @@ Description:   This Task can be used to run a Maven build.
 This is a very simple task, which just outputs a message which can be passed in as a parameter called MESSAGE. It even has a default value, so we can just start the task:
 
 ```
-$ tkn clustertask start echo
+tkn clustertask start echo
+```
+
+```
 ? Value for param `MESSAGE` of type `string`? (Default is `Meawwwwwww 😺`) Meawwwwwww 😺
 TaskRun started: echo-run-s6nm4
 
@@ -203,7 +218,10 @@ tkn taskrun logs echo-run-s6nm4 -f
 The task has now started. In order to access the logs, use the command which is provided in the output of the previous command, which is different compared to this example.
 
 ```
-$ tkn taskrun logs echo-run-s6nm4 -f
+tkn taskrun logs echo-run-s6nm4 -f
+```
+
+```
 [echo] Meawwwwwww 😺
 [echo] + echo Meawwwwwww $'\360\237\230\272'
 ```
@@ -211,12 +229,15 @@ $ tkn taskrun logs echo-run-s6nm4 -f
 If we want to pass in another message we can do this as follows:
 
 ```
-$ tkn clustertask start echo -p "MESSAGE=Hello Tekton"
+tkn clustertask start echo -p "MESSAGE=Hello Tekton"
 ```
 We can also explore previous runs of the tasks by runnning
 
 ```
-$ tkn taskrun list
+tkn taskrun list
+```
+
+```
 NAME             STARTED         DURATION    STATUS
 echo-run-tqb2h   1 minute ago    7 seconds   Succeeded
 echo-run-s6nm4   9 minutes ago   7 seconds   Succeeded
@@ -225,7 +246,10 @@ echo-run-s6nm4   9 minutes ago   7 seconds   Succeeded
 We can even dig deeper into these runs:
 
 ```
-$ tkn taskrun describe echo-run-tqb2h
+tkn taskrun describe echo-run-tqb2h
+```
+
+```
 Name:              echo-run-tqb2h
 Task Ref:          echo
 Service Account:   pipeline
@@ -282,11 +306,14 @@ Have a look at the following Pipeline definition, and make sure you understand h
 [first-pipeline.yaml](resources/exercise/pipeline/first-pipeline.yaml)
 
 ```
-$ oc create -f resources/exercise/pipeline/first-pipeline.yaml
+oc create -f resources/exercise/pipeline/first-pipeline.yaml
 ```
 
 ```
-$ tkn pipeline describe first-pipeline
+tkn pipeline describe first-pipeline
+```
+
+```
 Name:          first-pipeline
 Description:   This Pipeline Builds and deploys the color service
 
@@ -325,7 +352,10 @@ Note that the pipeline takes one parameter called MESSAGE, similar to the Cluste
 We can run the pipeline like this:
 
 ```
-$ tkn pipeline start first-pipeline -p "MESSAGE=Hello Tekton!" 
+tkn pipeline start first-pipeline -p "MESSAGE=Hello Tekton!" 
+```
+
+```
 PipelineRun started: first-pipeline-run-rd6vq
 
 In order to track the PipelineRun progress run:
@@ -336,7 +366,10 @@ Check out the logs of the pipeline using the command that is presented by you in
 You can also list the pipelineruns like so:
 
 ```
-$ tkn pipelinerun list
+tkn pipelinerun list
+```
+
+```
 NAME                       STARTED          DURATION    STATUS
 first-pipeline-run-rd6vq   3 minutes ago    8 seconds   Succeeded
 ```
@@ -380,7 +413,7 @@ Can you figure out how to wire up the `ls` task into the `workspace-pipeline` so
 TIP: At some point you'll have to load your definitions into the OpenShift Cluster. One possible way to do so is probably to clone this git repository to your computer, modify the definitions in the [resources/excercise](resources/exercise) folder, and then apply the configuration, for instance:
 
 ```
-$ oc apply -f resources/exercise/pipeline/workspace-pipeline.yaml
+oc apply -f resources/exercise/pipeline/workspace-pipeline.yaml
 ```
 
 This command can also be used to modify the definition in the cluster after you have changed the definition locally on your computer.
@@ -390,13 +423,13 @@ Feel free to use any method to manage your definitions, including but not limite
 Before you run your pipeline, you'll have to create a persistent volume claim, which will be mapped to the source workspace of the pipeline. A sample definition can be found in the resources directory:
 
 ```
-$ oc apply -f resources/exercise/pvc/source-workspace.yaml
+oc apply -f resources/exercise/pvc/source-workspace.yaml
 ```
 
 After that, you can launch the pipeline like so:
 
 ```
-$ tkn pipeline start workspace-pipeline --use-param-defaults -w name=source,claimName=source-workspace
+tkn pipeline start workspace-pipeline --use-param-defaults -w name=source,claimName=source-workspace
 ```
 
 Note that by using this command, we map the persistent volume claim we just created to the source workspace in the pipeline. The `git-clone` task will persist the cloned git repository into the persistent volume, which will be passed on to the `ls` task.
@@ -413,13 +446,16 @@ This definition generates a PVC for each pipeline run.
 Try to launch the pipeline by applying the PipelineRun object:
 
 ```
-$ oc create -f resources/exercise/pipelinerun/workspace-pipeline.yaml
+oc create -f resources/exercise/pipelinerun/workspace-pipeline.yaml
 ```
 
 Now have a look at the persistent volume claims in your namespace:
 
 ```
-$ oc get pvc
+oc get pvc
+```
+
+```
 NAME               STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 pvc-2255bcf699     Bound    pvc-bce66395-32d1-4ce8-ac68-2760182a026d   1Gi        RWO            gp2            14m
 pvc-519112a606     Bound    pvc-3d2d1af0-87fd-4c2f-a3a3-51d1353e77bd   1Gi        RWO            gp2            9m13s
@@ -487,14 +523,14 @@ The idea is that the pipeline executes the following tasks:
 In order to keep everything tidy, let's create a new project for the color service:
 
 ```
-$ oc new-project $(oc whoami)-color-service
+oc new-project $(oc whoami)-color-service
 ```
 
 First, we need to install the custom tasks we need for our pipeline, since not everything we need is available as a cluster wide ClusterTask. The tasks can be deployed as follows:
 
 ```
-$ oc apply -f resources/exercise/task/helm-deploy.yaml
-$ oc apply -f resources/exercise/task/maven.yaml
+oc apply -f resources/exercise/task/helm-deploy.yaml
+oc apply -f resources/exercise/task/maven.yaml
 ```
 Next, let's deploy a basic version of the pipeline:
 
@@ -510,7 +546,7 @@ The [definition of the persistent volume claim](resources/exercise/pvc/maven-rep
 
 
 ```
-$ oc apply -f resources/exercise/pvc/maven-repo.yaml
+oc apply -f resources/exercise/pvc/maven-repo.yaml
 ```
 
 Now you can start the pipeline for the first time. The easiest way to do so is to start it from the OpenShift Web Console, by using the "Start" Action of the pipeline. You can use all the default parameters for your first build, just make sure that you wire up the workspaces correctly. The `source` workspace needs to be a PVC for each pipeline run, hence we need to use a `VolumeClaimTemplate`. For the `maven-repo` workspace we just created a PVC, hence selecte `PersistentVolumeClaim`, and then select the newly created `maven-repo` PVC. Now you are ready to launch the pipeline.
@@ -526,9 +562,9 @@ After the pipeline finishes, a deployment should be available in your personal c
 You can also explore the deployment by running the following commands:
 
 ```
-$ oc get deployment
-$ oc get pods
-$ oc get route
+oc get deployment
+oc get pods
+oc get route
 ```
 
 You should be able to access the web application through the route, make sure you use https.
@@ -559,16 +595,56 @@ The EventListener object deploys a Pod and a Service into your namespace. This a
 oc apply -f resources/exercise/route/el-color-service.yaml
 ```
 
+The event listener should now be reachable on the following URL:
+
+```
+echo https://$(oc get route el-color-service -o jsonpath={'.spec.host'})
+```
+
+This is the URL that you'll have to configure in GitHub, so make sure you write this URL down somewhere.
+
 ### Fork the color-service into your own GitHub account
 
-In order to demonstrate no how we can hook up a Git development workflow with the pipeline we just built, you'll need a repo that you are in control of. To do so, head over to the [color-service](https://github.com/openshift-pipeline-workshop/color-service) repository on GitHub, and fork it into your own account. 
+In order to demonstrate no how we can hook up a Git development workflow with the pipeline we just built, you'll need a repo that you are in control of. To do so, head over to the [color-service](https://github.com/openshift-pipeline-workshop/color-service) repository on GitHub, and fork it into your own account. You should now have a repository such as https://github.com/<your_username>/color-service.
+
+Clone this repository to your computer:
 
 ```
-$ oc apply -f resources/exercise/eventlistener/color-service.yaml
-$ oc apply -f resources/exercise/triggertemplate/color-service.yaml
-$ oc apply -f resources/exercise/triggerbinding/color-service-push.yaml
-$ oc apply -f 
+git clone https://github.com/<your_username>/color-service
 ```
+
+### Configure the Web Hook in GitHub
+
+In your browser, navigate to **Settings** > **Webhooks**
+
+In there, add a new webhook by clicking on "Add webhook", and configure it as follows:
+
+- Payload URL: The URL of the event listener that you configured before
+- Content type: application/json
+- Secret: Leave empty for now
+- Which events would you like to trigger this webhook?: Send me everything
+- Active: checked
+
+
+### Trigger a Pipeline Run
+
+Let's try out this whole chain now. The whole pipeline should now run whenever you push some code, so let's try this. In your cloned git repository, you can run the following git commands:
+
+```
+git commit -m "empty-commit" --allow-empty
+git push -u origin
+```
+
+When running the following command, you should now see a running pipeline:
+
+```
+tkn pipelinerun list
+```
+
+The OpenShift Web Console should reflect the same thing:
+
+![alt text](img/running_pipeline.png "Running Pipeline")
+
 
 
 
