@@ -3,7 +3,7 @@ kind: ClusterTask
 metadata:
   name: echo
 spec:
-  description: This Task can be used to run a Maven build.
+  description: This task can be used to print a message
   params:
   - name: MESSAGE
     description: Message to be echoed
@@ -14,3 +14,4 @@ spec:
     name: echo
     script: |
       echo $(params.MESSAGE)
+
