@@ -631,9 +631,9 @@ In there, add a new webhook by clicking on "Add webhook", and configure it as fo
 Let's try out this whole chain now. The whole pipeline should now run whenever you push some code, so let's try this. In your cloned git repository, you can run the following git commands to create a new branch, add a commit to this branch, and push the branch to your Git repository:
 
 ```
-git branch -b feature/cool-feature
+git checkout -b feature/cool-feature
 git commit -m "empty-commit" --allow-empty
-git push -u origin
+git push -u origin feature/cool-feature
 ```
 
 When running the following command, you should now see a running pipeline:
